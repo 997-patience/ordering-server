@@ -1,0 +1,13 @@
+package com.wys.orderingserver;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class OrderingServerApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(OrderingServerApplication.class, args);
+    }
+
+}

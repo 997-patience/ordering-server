@@ -1,0 +1,33 @@
+spring:
+  config:
+    import: optional:file:./config/application-local.yaml
+  application:
+    name: ordering-server
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/ordering?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: ${ORDERING_DB_PASSWORD:}
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: ${ORDERING_REDIS_PASSWORD:}
+      database: 0
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true   # 开启驼峰命名：store_id -> storeId
+#  mapper-locations: classpath:com/wys/orderingserver/mapper/*.xml
+
+# 图片上传本地存储配置（对应 util/FileUploadUtil 与 controller/FileUploadController）
+# 若改用阿里云 OSS，把这段换成 aliyun.oss.* 配置
+ordering:
+  upload:
+    dir: D:/idea/Project/ordering-server/upload/   # 图片落盘根目录（注意结尾斜杠）
+    url-prefix: /upload/                            # 对外访问前缀，配合 WebConfig 静态资源映射
+
+pagehelper:
+  helper-dialect: mysql
+  reasonable: true
+  support-methods-arguments: true
