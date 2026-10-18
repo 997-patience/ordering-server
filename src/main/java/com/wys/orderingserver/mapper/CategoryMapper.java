@@ -29,7 +29,7 @@ public interface CategoryMapper {
             "where id = #{id} and store_id = #{storeId}")
     int updateCategory(Category category);
 
-    /** 先限制门店归属，再锁定待删除的分类。 */
+    /** 先限制门店归属，再锁定分类，供分类删除和新增菜品使用。 */
     @Select("select * from t_category where id = #{id} and store_id = #{storeId} for update")
     Category findByIdAndStoreIdForUpdate(@Param("id") Long id, @Param("storeId") Long storeId);
 
