@@ -1,7 +1,9 @@
 package com.wys.orderingserver.interceptors;
 
 import com.wys.orderingserver.mapper.EmployeeMapper;
+import com.wys.orderingserver.mapper.UserMapper;
 import com.wys.orderingserver.pojo.Employee;
+import com.wys.orderingserver.pojo.User;
 import com.wys.orderingserver.utils.JwtUtil;
 import com.wys.orderingserver.utils.ThreadLocalUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,7 +24,7 @@ import java.util.Map;
  *   1. 从请求头 Authorization 取出 token
  *   2. 检查 Redis 中是否还有该 token（退出登录/改密码后会被删除，实现"主动失效"）
  *   3. 解析 JWT，校验签名与有效期
- *   4. 员工令牌还需检查员工是否存在且启用，避免删店后旧令牌继续使用
+ *   4. 区分顾客与管理员身份，并检查对应账号是否仍然有效
  *   5. 把登录信息存入 ThreadLocal，供 Service 层取当前登录人
  *   6. 请求结束后在 afterCompletion 中清理 ThreadLocal，防止内存泄漏与数据串号
  *
@@ -37,8 +39,13 @@ public class LoginInterceptor implements HandlerInterceptor {
     @Autowired
     private EmployeeMapper employeeMapper;
 
+    @Autowired
+    private UserMapper userMapper;
+
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        // preHandle 拒绝请求时，当前拦截器不会进入 afterCompletion，先清除可能残留的上下文。
+        ThreadLocalUtil.remove();
         String token = request.getHeader("Authorization");
         if (!StringUtils.hasLength(token)) {
             response.setStatus(401);
@@ -55,9 +62,33 @@ public class LoginInterceptor implements HandlerInterceptor {
 
             // 解析 JWT（签名不对或已过期都会抛异常，被下面的 catch 捕获）
             Map<String, Object> claims = JwtUtil.parseToken(token);
-            // 管理端登录生成的 claims 包含 role；顾客令牌不走员工查询。
-            // Redis 中的旧令牌即使尚未过期，被删除员工也不能再发起新请求。
-            if (claims.get("role") instanceof Number) {
+            String path = request.getRequestURI().substring(request.getContextPath().length());
+            boolean adminRequest = path.equals("/admin") || path.startsWith("/admin/");
+            boolean appRequest = path.equals("/app") || path.startsWith("/app/");
+            Object type = claims.get("type");
+            if (type != null && !"user".equals(type) && !"admin".equals(type)) {
+                response.setStatus(401);
+                return false;
+            }
+            if ("user".equals(type)) {
+                // 顾客身份不能携带管理员角色，也不能访问管理端。
+                if (adminRequest || claims.get("role") != null
+                        || !(claims.get("id") instanceof Number id) || id.longValue() < 1
+                        || !(claims.get("phone") instanceof String phone) || !StringUtils.hasText(phone)) {
+                    response.setStatus(401);
+                    return false;
+                }
+                User user = userMapper.findByPhone(phone);
+                if (user == null || !Long.valueOf(id.longValue()).equals(user.getId())) {
+                    response.setStatus(401);
+                    return false;
+                }
+            } else if (claims.get("role") instanceof Number) {
+                // 新管理员令牌有 type=admin；兼容此前只有 role 的管理员令牌。
+                if (appRequest) {
+                    response.setStatus(401);
+                    return false;
+                }
                 Object idValue = claims.get("id");
                 if (!(idValue instanceof Number id)) {
                     response.setStatus(401);
@@ -68,6 +99,10 @@ public class LoginInterceptor implements HandlerInterceptor {
                     response.setStatus(401);
                     return false;
                 }
+            } else if (type != null || appRequest) {
+                // 用户端受保护接口要求明确的顾客身份；管理端旧无角色令牌仍由业务权限检查拒绝。
+                response.setStatus(401);
+                return false;
             }
             ThreadLocalUtil.set(claims);
             return true;

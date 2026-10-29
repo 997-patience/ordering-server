@@ -18,8 +18,7 @@ import java.time.LocalDateTime;
 @Data
 public class Cart {
 
-    /** 主键ID（数据库自增，新增时不传） */
-    @NotNull(groups = Update.class)
+    /** 主键ID由数据库生成；9.3 按当前用户与菜品定位，不要求前端传入主键。 */
     private Long id;
 
     /** 用户ID（从登录信息 ThreadLocal 取，绝不从请求体接收） */
@@ -29,11 +28,12 @@ public class Cart {
     private Long storeId;
 
     /** 菜品ID */
-    @NotNull
+    @NotNull(message = "菜品ID不能为空")
+    @Min(value = 1, message = "请选择有效的菜品ID")
     private Long dishId;
 
     /** 数量 */
-    @NotNull
+    @NotNull(message = "数量不能为空")
     @Min(value = 1, message = "数量至少为1")
     private Integer quantity;
 

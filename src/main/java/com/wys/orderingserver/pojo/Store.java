@@ -2,7 +2,7 @@ package com.wys.orderingserver.pojo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.groups.Default;
 import lombok.Data;
@@ -18,11 +18,11 @@ import java.time.LocalTime;
 public class Store {
 
     /** 主键ID（数据库自增，新增时不传） */
-    @NotNull(groups = Update.class)
+    @NotNull(groups = Update.class, message = "门店ID不能为空")
     private Long id;
 
     /** 门店名称 */
-    @NotEmpty
+    @NotBlank(message = "门店名称不能为空")
     private String name;
 
     /** 门店地址 */

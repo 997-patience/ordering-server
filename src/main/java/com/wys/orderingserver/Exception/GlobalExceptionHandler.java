@@ -2,13 +2,20 @@ package com.wys.orderingserver.Exception;
 
 import com.wys.orderingserver.pojo.Result;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * 全局异常处理器
@@ -18,6 +25,32 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(NoResourceFoundException.class)
+    public Result handleMissingResource(NoResourceFoundException e) {
+        return Result.error("请求的资源不存在");
+    }
+
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public Result handleMissingFile(MissingServletRequestPartException e) {
+        return Result.error("缺少必传文件：" + e.getRequestPartName());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public Result handleOversizedFile(MaxUploadSizeExceededException e) {
+        return Result.error("上传图片过大，请选择更小的图片");
+    }
+
+    @ExceptionHandler(MultipartException.class)
+    public Result handleMalformedUpload(MultipartException e) {
+        return Result.error("上传请求格式错误，请使用multipart/form-data上传图片");
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public Result handleUnsupportedContentType(HttpMediaTypeNotSupportedException e) {
+        return Result.error("请求Content-Type不受支持，请按接口要求提交");
+    }
 
     /** 业务异常：Service 层主动抛出的可预期错误，直接把 message 返回给前端 */
     @ExceptionHandler(BizException.class)

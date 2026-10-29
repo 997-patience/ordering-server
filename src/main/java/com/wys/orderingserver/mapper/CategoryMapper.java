@@ -1,5 +1,6 @@
 package com.wys.orderingserver.mapper;
 
+import com.wys.orderingserver.pojo.AppCategoryVO;
 import com.wys.orderingserver.pojo.Category;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
@@ -16,6 +17,12 @@ public interface CategoryMapper {
     /** 管理端查询全部分类（含禁用分类），按排序号、主键稳定排序。 */
     @Select("select * from t_category where store_id = #{storeId} order by sort asc, id asc")
     List<Category> getCategory(Long storeId);
+
+    /** 用户端只查询本次选择门店的启用分类，不影响管理端查看禁用分类。 */
+    @Select("select id, name, sort from t_category " +
+            "where store_id = #{storeId} and status = 1 " +
+            "order by sort asc, id asc")
+    List<AppCategoryVO> listEnabledByStoreId(@Param("storeId") Long storeId);
 
     /** 新增分类，主键由数据库自增生成。 */
     @Insert("insert into t_category(store_id, name, sort, status, create_time, update_time) " +

@@ -3,6 +3,7 @@ package com.wys.orderingserver.pojo;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -28,7 +29,13 @@ public class User {
     private String phone;
 
     /** 密码（MD5 加密后存储，序列化时不返回给前端） */
-    @JsonIgnore
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @NotBlank(message = "密码不能为空", groups = Add.class)
+    @Pattern(
+            regexp = "^\\S{5,16}$",
+            message = "密码必须为5~16位非空白字符",
+            groups = Add.class
+    )
     private String password;
 
     /** 昵称 */

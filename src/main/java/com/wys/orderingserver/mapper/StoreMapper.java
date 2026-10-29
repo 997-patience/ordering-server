@@ -29,7 +29,15 @@ public interface StoreMapper {
     @Options(useGeneratedKeys = true, keyProperty = "id")
     void add(Store store);
 
-    /** 删除前锁定门店，防止两个删除请求同时清理同一家店。 */
+    /** 修改门店：只更新指定 ID，选填字段为 null 时保留原值，不改变创建时间。 */
+    @Update("update t_store set name = #{name}, " +
+            "address = coalesce(#{address}, address), phone = coalesce(#{phone}, phone), " +
+            "open_time = coalesce(#{openTime}, open_time), close_time = coalesce(#{closeTime}, close_time), " +
+            "notice = coalesce(#{notice}, notice), status = coalesce(#{status}, status), " +
+            "update_time = #{updateTime} where id = #{id}")
+    int updateStore(Store store);
+
+    /** 修改、删除前锁定门店，让同一门店的写操作在事务内协调。 */
     @Select("select * from t_store where id = #{id} for update")
     Store findByIdForUpdate(Long id);
 

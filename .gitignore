@@ -39,3 +39,5 @@ build/
 !.env.example
 /upload/
 *.log
+frontend/node_modules/
+frontend/dist/

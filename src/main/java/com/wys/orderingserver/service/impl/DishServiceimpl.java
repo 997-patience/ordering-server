@@ -11,26 +11,17 @@ import com.wys.orderingserver.pojo.Dish;
 import com.wys.orderingserver.pojo.PageBean;
 import com.wys.orderingserver.service.DishService;
 import com.wys.orderingserver.utils.AdminContextUtil;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.wys.orderingserver.utils.DishCacheUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.Cursor;
-import org.springframework.data.redis.core.ScanOptions;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 @Service
 public class DishServiceimpl implements DishService {
-    private static final Logger log = LoggerFactory.getLogger(DishServiceimpl.class);
 
     @Autowired
     private DishMapper dishMapper;
@@ -45,7 +36,7 @@ public class DishServiceimpl implements DishService {
     private CartMapper cartMapper;
 
     @Autowired
-    private StringRedisTemplate stringRedisTemplate;
+    private DishCacheUtil dishCacheUtil;
 
     @Override
     public PageBean<Dish> page(Integer pageNum, Integer pageSize, String name, Integer status, Long categoryId)
@@ -103,6 +94,7 @@ public class DishServiceimpl implements DishService {
         if (dishMapper.addDish(dish) != 1) {
             throw new BizException("新增菜品失败，请重试");
         }
+        clearDishCacheAfterCommit(storeId);
     }
 
     @Override
@@ -217,27 +209,6 @@ public class DishServiceimpl implements DishService {
 
     /** 数据库事务提交后才删除本店全部分类的列表缓存，覆盖修改分类和全部菜品列表。 */
     private void clearDishCacheAfterCommit(Long storeId) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                ScanOptions options = ScanOptions.scanOptions().match("dish:" + storeId + ":*").count(200).build();
-                try (Cursor<String> cursor = stringRedisTemplate.scan(options)) {
-                    List<String> keys = new ArrayList<>();
-                    while (cursor.hasNext()) {
-                        keys.add(cursor.next());
-                        if (keys.size() == 200) {
-                            stringRedisTemplate.delete(keys);
-                            keys.clear();
-                        }
-                    }
-                    if (!keys.isEmpty()) {
-                        stringRedisTemplate.delete(keys);
-                    }
-                } catch (RuntimeException e) {
-                    // 数据库此时已提交，记录缓存故障，避免把已成功的修改误报成写库失败。
-                    log.error("菜品数据已变更，清理门店 {} 的菜品列表缓存失败", storeId, e);
-                }
-            }
-        });
+        dishCacheUtil.clearAfterCommit(storeId);
     }
 }

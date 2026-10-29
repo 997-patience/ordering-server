@@ -8,6 +8,7 @@ import com.wys.orderingserver.pojo.PageBean;
 import com.wys.orderingserver.pojo.Store;
 import com.wys.orderingserver.service.StoreService;
 import com.wys.orderingserver.utils.AdminContextUtil;
+import com.wys.orderingserver.utils.DishCacheUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,9 @@ import java.time.LocalDateTime;
 public class StoreServiceimpl implements StoreService {
     @Autowired
     private  StoreMapper storeMapper;
+
+    @Autowired
+    private DishCacheUtil dishCacheUtil;
 
     @Override
     public PageBean<Store> page(Integer pageNum, Integer pageSize, String name, Integer status) {
@@ -84,6 +88,53 @@ public class StoreServiceimpl implements StoreService {
         storeMapper.deleteEmployeesByStoreId(id);
         if (storeMapper.delete(id) != 1) {
             throw new BizException("门店删除失败，请刷新后重试");
+        }
+        dishCacheUtil.clearAfterCommit(id);
+    }
+
+    @Override
+    @Transactional
+    public void updateStore(Store store) {
+        // isSuperAdmin 同时校验登录及管理员身份；超管修改门店不要求自己绑定门店。
+        boolean superAdmin = AdminContextUtil.isSuperAdmin();
+        if (store == null || store.getId() == null || store.getId() < 1) {
+            throw new BizException("门店ID不合法");
+        }
+        if (!superAdmin) {
+            Long currentStoreId = AdminContextUtil.getCurrentAdminStoreId();
+            if (!currentStoreId.equals(store.getId())) {
+                throw new BizException("只能修改当前门店的信息");
+            }
+            // 普通管理员的 SQL 目标最终使用登录信息中的门店 ID。
+            store.setId(currentStoreId);
+        }
+        if (!StringUtils.hasText(store.getName())) {
+            throw new BizException("门店名称不能为空");
+        }
+        store.setName(store.getName().strip());
+        // 字段上限与 ordering-ddl.sql 一致，按 Unicode 字符数检查。
+        checkTextLength(store.getName(), 100, "门店名称");
+        checkTextLength(store.getAddress(), 255, "门店地址");
+        checkTextLength(store.getPhone(), 20, "门店电话");
+        checkTextLength(store.getNotice(), 500, "门店公告");
+        if (store.getStatus() != null && store.getStatus() != 0 && store.getStatus() != 1) {
+            throw new BizException("门店状态只能为0或1");
+        }
+
+        // 与整店删除使用同一门店行锁，防止查询存在后被并发删除。
+        if (storeMapper.findByIdForUpdate(store.getId()) == null) {
+            throw new BizException("门店不存在");
+        }
+        store.setUpdateTime(LocalDateTime.now());
+        int rows = storeMapper.updateStore(store);
+        if (rows != 1) {
+            throw new BizException("门店修改失败，请刷新后重试");
+        }
+    }
+
+    private void checkTextLength(String value, int maxLength, String fieldName) {
+        if (value != null && value.codePointCount(0, value.length()) > maxLength) {
+            throw new BizException(fieldName + "不能超过" + maxLength + "个字符");
         }
     }
 }

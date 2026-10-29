@@ -12,4 +12,6 @@ public interface StoreService {
     void add(Store store);
     //删除门店
     void delete(Long id);
+    //修改门店信息
+    void updateStore(Store store);
 }

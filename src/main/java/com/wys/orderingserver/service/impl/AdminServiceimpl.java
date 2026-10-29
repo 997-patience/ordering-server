@@ -53,6 +53,7 @@ public class AdminServiceimpl implements AdminService {
         // storeId 是门店数据隔离的关键：登录时写进令牌，后续接口从令牌取值过滤
         claims.put("storeId", employee.getStoreId());
         claims.put("role", employee.getRole());
+        claims.put("type", "admin");
         String token = JwtUtil.genToken(claims);
 
         // 5. 令牌写入 Redis（key = token），有效期与 token 一致

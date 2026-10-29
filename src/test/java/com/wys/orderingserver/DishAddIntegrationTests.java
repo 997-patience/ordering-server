@@ -76,6 +76,8 @@ class DishAddIntegrationTests {
     void prepareRedis() {
         tokenOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(tokenOperations);
+        when(redisTemplate.scan(any(org.springframework.data.redis.core.ScanOptions.class)))
+                .thenReturn(mock(org.springframework.data.redis.core.Cursor.class));
     }
 
     @AfterEach

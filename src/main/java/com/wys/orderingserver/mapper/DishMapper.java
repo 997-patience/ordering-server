@@ -26,6 +26,10 @@ public interface DishMapper {
                     @Param("categoryId") Long categoryId,
                     @Param("storeId") Long storeId);
 
+    /** 用户端详情按全局唯一菜品 ID 查询，保留文档规定的上下架状态，不加写锁。 */
+    @Select("select * from t_dish where id = #{id}")
+    Dish findById(@Param("id") Long id);
+
     /** 新增菜品，主键由数据库生成；返回影响行数，并把主键回填到 dish.id。 */
     @Insert("insert into t_dish(store_id, category_id, name, price, image, description, status, sort, create_time, update_time) " +
             "values(#{storeId}, #{categoryId}, #{name}, #{price}, #{image}, #{description}, #{status}, #{sort}, #{createTime}, #{updateTime})")

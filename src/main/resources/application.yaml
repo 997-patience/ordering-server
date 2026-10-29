@@ -3,6 +3,10 @@ spring:
     import: optional:file:./config/application-local.yaml
   application:
     name: ordering-server
+  servlet:
+    multipart:
+      max-file-size: 5MB       # 单张图片上限，FileUploadUtil 同时读取此配置
+      max-request-size: 6MB    # 为 multipart 边界及其他表单信息预留空间
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/ordering?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true
@@ -13,18 +17,21 @@ spring:
       host: localhost
       port: 6379
       password: ${ORDERING_REDIS_PASSWORD:}
-      database: 0
 
 mybatis:
   configuration:
     map-underscore-to-camel-case: true   # 开启驼峰命名：store_id -> storeId
 #  mapper-locations: classpath:com/wys/orderingserver/mapper/*.xml
 
-# 图片上传本地存储配置（对应 util/FileUploadUtil 与 controller/FileUploadController）
+# 图片上传本地存储配置（对应 utils/FileUploadUtil 与 controller/common/FileUploadController）
 # 若改用阿里云 OSS，把这段换成 aliyun.oss.* 配置
 ordering:
+  order-timeout:
+    enabled: true
+    scan-delay-ms: 60000        # 每轮扫描结束后，等待 60 秒再开始下一轮
+    initial-delay-ms: 10000     # 启动 10 秒后先扫描一次
   upload:
-    dir: D:/idea/Project/ordering-server/upload/   # 图片落盘根目录（注意结尾斜杠）
+    dir: ${ORDERING_UPLOAD_DIR:./upload/}  # 默认保存在项目目录，可通过环境变量调整
     url-prefix: /upload/                            # 对外访问前缀，配合 WebConfig 静态资源映射
 
 pagehelper:
